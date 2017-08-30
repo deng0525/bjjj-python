@@ -10,6 +10,7 @@ import requests
 import json
 import time
 import datetime
+import os
 
 # Domain Host
 host = 'https://enterbj.zhongchebaolian.com'
@@ -39,6 +40,18 @@ def loadConfig(filename):
     with open(filename) as json_file:
         data = json.load(json_file)
         return data
+# 动态时间戳
+t_Format = '%Y-%m-%d %H:%M:%S'
+def makeTimestampPoint():
+    now = time.localtime(time.time())
+    t_Curr = time.strftime(t_Format, now)
+    t_Zero = time.strftime('%Y-%m-%d 00:00:00', now)
+    t1 = time.mktime(time.strptime(t_Curr, t_Format))
+    t2 = time.mktime(time.strptime(t_Zero, t_Format))
+    seconds = t1 - t2;
+    point = (seconds - seconds % 360) + t2;
+    t3 = time.localtime(point)
+    return time.strftime(t_Format, t3)
 
 # 表单数据项
 appsource = 'bjjj'
@@ -95,6 +108,14 @@ def getindexdata(userid,appkey,deviceid,timestamp,token,sign,platform,appsource)
 # 客户端运行python可以无限循环等待，直到成功
 result = (0, None)
 while True:
+    # 动态更新timestamp token sign
+    timestamp = makeTimestampPoint()
+    date = timestamp.split(' ')[0]
+    if os.path.exists(date):
+        json_token = loadConfig(date + '/' + 'token.json')
+        token = json_token[timestamp]
+        json_sign = loadConfig(date + '/' + 'sign.json')
+        sign = json_sign[timestamp]
     result = getindexdata(userid,appkey,deviceid,timestamp,token,sign,platform,appsource)
     if result[1]:
         if result[1]['rescode'] == '200':
@@ -110,7 +131,7 @@ carobj = datalist[0]
 applyflag = carobj['applyflag']
 if applyflag != '1':
     print('applyflag != 1, 无需申请')
-    #exit(1)
+    exit(1)
 
 # person.json
 person_info = loadConfig('person.json')
@@ -124,13 +145,10 @@ personphoto = person_info['personphoto']
 inbjentrancecode1 = '16'
 inbjentrancecode = '13'
 inbjduration = '7'
-# 需要修改的字段：hiddentime，inbjtime，imageId，sign
-now = time.localtime(time.time())
-hiddentime = time.strftime('%Y-%m-%d %H:%M:%S', now)
-# 由于是服务器自动提交，采用的签名从数据库获取，时间用特定的几个点
-hiddentime = time.strftime('%Y-%m-%d 00:00:00', now)
-# 进京时间，如果存在进京证，则从明天开始，否则是今日开始
-inbjtime = time.strftime('%Y-%m-%d', now)
+# 动态时间戳
+hiddentime = makeTimestampPoint()
+date = timestamp.split(' ')[0]
+inbjtime = date
 # 默认申请明天的
 if True:
     today = datetime.date.today()
@@ -141,9 +159,10 @@ if True:
 imageId = inbjentrancecode+inbjduration+inbjtime+userid+engineno+cartypecode+driverlicenseno+carid+hiddentime
 
 # timestamp_sign.json
-sign_info = loadConfig('timestamp_sign.json')
+sign_info = loadConfig(date + '/' + 'timestamp.json')
 # sign从json中获取
 sign = sign_info[hiddentime]
+
 if not sign:
     print("缺少sign值，通知管理员更新json文件")
     exit(1)
