@@ -41,11 +41,11 @@ def loadPaper(applyid):
         return res.content
     return None
 
-def loadPaperFlowingNo(html):
+def getPaperImage(html):
     soup = BeautifulSoup(html, 'html.parser', from_encoding='utf-8')
     tag = soup.find('p', class_='Nop')
     return tag.get_text()
 
 applyid = ''
-res = getPaperImage(loadPaperFlowingNo(applyid))
+res = getPaperImage(loadPaper(applyid))
 print(res)
